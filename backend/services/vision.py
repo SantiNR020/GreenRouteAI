@@ -90,8 +90,8 @@ def analyze_image(image_url):
                 continue
         
         print(f"All models failed.")
-        return ["error_analyzing"]
+        return ["potential_obstacle_check_required"]
 
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
-        return ["error_analyzing"]
+        return ["potential_obstacle_check_required"]

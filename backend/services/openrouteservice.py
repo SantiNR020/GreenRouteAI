@@ -4,13 +4,14 @@ import json
 
 ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions"
 
-def get_route(origin_lat, origin_lng, dest_lat, dest_lng, profile="foot-walking", block_area=None):
+def get_route(origin_lat, origin_lng, dest_lat, dest_lng, profile="foot-walking", block_area=None, block_areas=None):
     """
     Calculates a route using OpenRouteService.
     
     Args:
         profile: 'foot-walking', 'driving-car', 'cycling-regular', 'wheelchair'
-        block_area: String "lat,lng,radius" (e.g., "40.4,-3.7,50")
+        block_area: String "lat,lng,radius" (Single area)
+        block_areas: List of Strings ["lat,lng,radius"] (Multiple areas)
     """
     ORS_API_KEY = os.getenv("ORS_API_KEY")
     if not ORS_API_KEY:
@@ -41,31 +42,47 @@ def get_route(origin_lat, origin_lng, dest_lat, dest_lng, profile="foot-walking"
     }
 
     # Handle Avoidance (Block Area)
-    if block_area:
+    polygons = []
+    
+    # Helper to create polygon from lat,lng,radius
+    def create_polygon(area_str):
         try:
-            lat, lng, radius = map(float, block_area.split(','))
-            # ORS uses 'options' -> 'avoid_polygons'
-            # We construct a small bounding box or polygon around the point
-            # For simplicity, let's make a small square around the point
-            # 1 degree lat is ~111km. 0.0001 is ~11m.
-            # Radius is in meters.
+            lat, lng, radius = map(float, area_str.split(','))
             offset = radius / 111320.0 # Rough approximation
-            
-            # Create a square polygon
             p1 = [lng - offset, lat - offset]
             p2 = [lng + offset, lat - offset]
             p3 = [lng + offset, lat + offset]
             p4 = [lng - offset, lat + offset]
             p5 = [lng - offset, lat - offset] # Close the loop
-            
-            body["options"] = {
+            return [p1, p2, p3, p4, p5]
+        except Exception as e:
+            print(f"Error parsing block_area {area_str}: {e}")
+            return None
+
+    if block_area:
+        poly = create_polygon(block_area)
+        if poly: polygons.append(poly)
+        
+    if block_areas:
+        for area in block_areas:
+            poly = create_polygon(area)
+            if poly: polygons.append(poly)
+
+    if polygons:
+        if len(polygons) == 1:
+             body["options"] = {
                 "avoid_polygons": {
                     "type": "Polygon",
-                    "coordinates": [[p1, p2, p3, p4, p5]]
+                    "coordinates": polygons
                 }
             }
-        except Exception as e:
-            print(f"Error parsing block_area: {e}")
+        else:
+             body["options"] = {
+                "avoid_polygons": {
+                    "type": "MultiPolygon",
+                    "coordinates": [ [p] for p in polygons ] # MultiPolygon format: [[[[x,y]...]]]
+                }
+            }
 
     url = f"{ORS_BASE_URL}/{ors_profile}/geojson"
     

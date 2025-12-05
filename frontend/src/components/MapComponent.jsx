@@ -45,7 +45,7 @@ const MapComponent = ({ routeData, obstacles = [] }) => {
     });
 
     return (
-        <div className="h-[600px] w-full rounded-lg overflow-hidden shadow-lg border border-gray-200">
+        <div className="h-full w-full rounded-lg overflow-hidden shadow-lg border border-gray-200">
             <MapContainer center={center} zoom={zoom} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                 <ChangeView center={center} zoom={zoom} />
                 <TileLayer

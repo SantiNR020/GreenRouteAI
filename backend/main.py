@@ -22,7 +22,8 @@ class RouteRequest(BaseModel):
     origin: str
     destination: str
     profile: str = "foot" # foot, car, bike
-    block_area: Optional[str] = None # format: "lat,lng,radius"
+    block_area: Optional[str] = None # format: "lat,lng,radius" (Legacy, keep for backward compat)
+    block_areas: Optional[List[str]] = None # List of "lat,lng,radius"
 
 @app.get("/")
 def read_root():
@@ -71,7 +72,8 @@ def get_route(request: RouteRequest):
                 origin_lat, origin_lng, 
                 dest_lat, dest_lng, 
                 request.profile,
-                request.block_area
+                request.block_area,
+                request.block_areas
             )
         except Exception as ors_err:
              print(f"ORS Error with resolved coords: {origin_lat},{origin_lng} -> {dest_lat},{dest_lng}")
@@ -113,6 +115,12 @@ def get_route(request: RouteRequest):
 def analyze_route(lat: float, lng: float):
     try:
         url = streetview.get_street_view_url(lat, lng)
+        if url is None:
+             return {
+                 "image_url": None, 
+                 "obstacles": ["Obstáculo encontrado pero no imagen disponible para el usuario"]
+             }
+             
         obstacles = vision.analyze_image(url)
         return {"image_url": url, "obstacles": obstacles}
     except Exception as e:
